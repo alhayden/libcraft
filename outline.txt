@@ -1,0 +1,44 @@
+C O N C E P T S
+
+Commands:
+ - create
+ - start
+ - stop
+ - force-stop
+ - restart
+ - clone
+ - backup
+ - edit
+ - console
+ - create-user
+ - edit-user
+ - delete-user
+
+
+Files:
+ - /etc/libcraft/servers/*.yml
+    - one yml file per server
+        - server's root directory
+        - name of jar to run
+        - optional arguments for JVM (Xmx,-XXUseG1GC,etc)
+        - optional arguments for server (nogui)
+        - server.properties properties (port, max players, gamemode, etc.)
+        - whitelist?
+        - run on startup?
+        - backup directory, schedule, etc.
+        - restart on crash
+    - in separate section of yml:
+        - owner
+        - list of allowed users 
+ - /etc/libcraft/users.yml
+    - username:
+        - bcrypt'd password
+        - permissions:
+            - can they create new servers?
+            - can they manage users?
+ - /etc/libcraft/settings.yml
+    - list of directories where servers can be created
+    - path to backup directory
+
+Also make sure to firejail all the servers
+another feature: run a daemon on t-1000 or t-3000 to check if ports are forwarded 
