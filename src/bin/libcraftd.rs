@@ -1,17 +1,16 @@
-use std::process;
-use std::io::Read;
+use std::{process, thread};
 use std::str::from_utf8;
-use std::thread;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex, Arc};
+use std::io::Read;
 
-fn subthread_stream_to_vec<R>(mut stream: R) -> Arc<Mutex<Vec<u8>>>
-where R: Read + Send + 'static,
+pub fn subthread_stream_to_vec<R>(mut stream: R) -> Arc<Mutex<Vec<u8>>>
+    where R: Read + Send + 'static,
 {
     let out = Arc::new(Mutex::new(Vec::new()));
     let vec = out.clone();
     thread::Builder::new()
         .name("subthread_stream_to_vec".into())
-        .spawn(move ||  loop {
+        .spawn(move || loop {
             let mut buffer = [0];
             match stream.read(&mut buffer) {
                 Err(err) => {
@@ -20,7 +19,7 @@ where R: Read + Send + 'static,
                 }
                 Ok(output) => {
                     if output == 0 {
-                        break
+                        break;
                     } else if output == 1 {
                         vec.lock().expect("!lock").push(buffer[0]);
                     } else {
@@ -30,7 +29,7 @@ where R: Read + Send + 'static,
                 }
             }
         }).expect("!thread");
-    out
+    return out;
 }
 
 fn main() {
@@ -47,23 +46,9 @@ fn main() {
     let buff = subthread_stream_to_vec(server_process.stdout.take().expect("!stdout"));
     loop {
         let mut b = buff.lock().expect("!locked");
-        if b.len() > 0  {
+        if b.len() > 0 {
             print!("{}", from_utf8(b.as_slice()).unwrap());
             b.clear();
-        }/*
-        if buff.lock().expect("!lock").len() > 0 {
-            print!("{}", from_utf8(buff.lock().expect("!locked").as_slice()).unwrap());
-            buff.lock().expect("!locked").clear();
-        }*/
-    }
-    /*let mut stdout = server_process.stdout.unwrap();
-    loop {
-        let mut buf: [u8; 10] = [0; 10];
-        let n = stdout.read(&mut buf).unwrap();//TODO change location?
-        if n == 0 {
-            break;
         }
-        print!("{}", from_utf8(&buf[0..n]).unwrap());
-    }*/
-
+    }
 }
