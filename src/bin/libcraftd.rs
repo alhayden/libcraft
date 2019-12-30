@@ -1,27 +1,48 @@
-use std::{process, thread};
+use std::{thread, time};
+use std::os::unix::net::{UnixStream, UnixListener};
+use std::thread::sleep;
 use std::str::from_utf8;
-use std::sync::{Mutex, Arc};
 use std::io::Read;
-use libcraft::threadutil::subthread_stream_to_vec;
-
+use std::io::Write;
 
 fn main() {
-    let mut server_process = match process::Command::new("bash")
-        .arg("-c")
-        .arg("for i in 1 2 3 4 5 6 7 8 9; do echo hello; sleep 1; done")
-        .stdout(process::Stdio::piped())
-        .stdin(process::Stdio::piped())
-        .spawn() {
-        Err(why) => panic!("Failed to start server: {}", why),
-        Ok(proc) => proc,
-    };
+    open_listener();
+}
 
-    let buff = subthread_stream_to_vec(server_process.stdout.take().expect("!stdout"));
-    loop {
-        let mut b = buff.lock().expect("!locked");
-        if b.len() > 0 {
-            print!("{}", from_utf8(b.as_slice()).unwrap());
-            b.clear();
+fn open_listener() {
+    fn handle_client(mut stream: UnixStream) {
+        loop {
+            let mut buf: [u8; 1] = [0];
+            let n = stream.read(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            print!("{}", from_utf8(&buf).unwrap());
+            stream.write(&buf);
+        }
+        println!("me done");
+    }
+
+    // remove the sock if it exists so that we don't error when opening the server socket
+    match std::fs::remove_file("libcraftd.sock") {
+        Ok(_) => {}
+        Err(_) => {}
+    };
+    let listener = UnixListener::bind("libcraftd.sock").expect("Couldn't open server socket!");
+
+    // accept connections and process them, spawning a new thread for each one
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                /* connection succeeded */
+                println!("connect work");
+                thread::spawn(|| handle_client(stream));
+            }
+            Err(_) => {
+                /* connection failed */
+                println!("did not compute");
+                break;
+            }
         }
     }
 }
