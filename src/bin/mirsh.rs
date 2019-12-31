@@ -10,7 +10,13 @@ fn main() {
         },
         //handle single-argument commands
         2 => {
-
+            match &args[1][..]{
+                "help" => {
+                    help();
+                    std::process::exit(0);
+                },
+                _ => {}
+            }
         },
         //handle multi-argument commands
         _ => {
@@ -33,4 +39,9 @@ fn help() {
     println!("   stop             issues a stop command to a running server");
     println!("   force-stop       kills a server externally.  This could lead to data loss");
     println!("   restart          sends the stop command to a server and then starts it again");
+    println!("   clone            duplicate a server to another location");
+    println!("   backup           create a backup of a server");
+    println!("   edit             open a server's config file for editing");
+
+    println!();
 }
