@@ -11,14 +11,28 @@ fn main() {
 
 fn open_listener() {
     fn handle_client(mut stream: UnixStream) {
+        let mut line: [u8; 50] = [0; 50];
+        let mut i = 0;
         loop {
             let mut buf: [u8; 1] = [0];
             let n = stream.read(&mut buf).unwrap();
+            print!("{}", n);
             if n == 0 {
                 break;
             }
             print!("{}", from_utf8(&buf).unwrap());
-            stream.write(&buf);
+            line[i] = buf[0];
+            i += 1;
+            if i >= line.len() - 1 || buf[0] == 0x0A { // EOL
+                let actual_line  = from_utf8(&line[0..i]).unwrap();
+                let pieces: Vec<&str> = actual_line.split(":").collect();
+                let name = pieces[0];
+                let data = &line[name.len()+1..i];
+                i = 0;
+                stream.write(name.as_bytes()).unwrap();
+                stream.write(b" yoinks ").unwrap();
+                stream.write(data).unwrap();
+            }
         }
         println!("me done");
     }
