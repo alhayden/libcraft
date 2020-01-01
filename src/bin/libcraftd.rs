@@ -1,6 +1,5 @@
-use std::{thread, time};
+use std::thread;
 use std::os::unix::net::{UnixStream, UnixListener};
-use std::thread::sleep;
 use std::str::from_utf8;
 use std::io::Read;
 use std::io::Write;
@@ -16,7 +15,6 @@ fn open_listener() {
         loop {
             let mut buf: [u8; 1] = [0];
             let n = stream.read(&mut buf).unwrap();
-            print!("{}", n);
             if n == 0 {
                 break;
             }
@@ -24,12 +22,12 @@ fn open_listener() {
             line[i] = buf[0];
             i += 1;
             if i >= line.len() - 1 || buf[0] == 0x0A { // EOL
-                let actual_line  = from_utf8(&line[0..i]).unwrap();
-                let pieces: Vec<&str> = actual_line.split(":").collect();
+                let actual_line = &line[0..i];
+                let pieces: Vec<&[u8]> = actual_line.split(|s| *s == 0x3A).collect(); // ':' character
                 let name = pieces[0];
-                let data = &line[name.len()+1..i];
+                let data = &line[name.len() + 1..i];
                 i = 0;
-                stream.write(name.as_bytes()).unwrap();
+                stream.write(name).unwrap();
                 stream.write(b" yoinks ").unwrap();
                 stream.write(data).unwrap();
             }
