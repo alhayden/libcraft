@@ -1,6 +1,5 @@
-use std::thread;
+use std::{thread, io};
 use std::os::unix::net::{UnixStream, UnixListener};
-use std::str::from_utf8;
 use std::io::Read;
 use std::io::Write;
 
@@ -18,7 +17,8 @@ fn open_listener() {
             if n == 0 {
                 break;
             }
-            print!("{}", from_utf8(&buf).unwrap());
+//            print!("{}", from_utf8(&buf).unwrap());
+            io::stdout().write(&buf).unwrap();
             line[i] = buf[0];
             i += 1;
             if i >= line.len() - 1 || buf[0] == 0x0A { // EOL
