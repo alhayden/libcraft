@@ -8,19 +8,16 @@ fn main() {
             help();
             std::process::exit(0);
         },
-        //handle single-argument commands
-        2 => {
-            match &args[1][..]{
-                "help" => {
-                    help();
-                    std::process::exit(0);
-                },
-                _ => {}
-            }
-        },
         //handle multi-argument commands
         _ => {
+            match &args[0][..] {
+                "help" => {
+                    
+                }
+                _ => {
 
+                }
+            }
         }
     }
 
