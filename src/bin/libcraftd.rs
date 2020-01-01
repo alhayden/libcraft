@@ -2,6 +2,7 @@ use std::{thread, io};
 use std::os::unix::net::{UnixStream, UnixListener};
 use std::io::Read;
 use std::io::Write;
+use std::str::from_utf8;
 
 fn main() {
     open_listener();
@@ -17,13 +18,15 @@ fn open_listener() {
             if n == 0 {
                 break;
             }
-//            print!("{}", from_utf8(&buf).unwrap());
             io::stdout().write(&buf).unwrap();
             line[i] = buf[0];
             i += 1;
             if i >= line.len() - 1 || buf[0] == 0x0A { // EOL
-                let actual_line = &line[0..i];
-                let pieces: Vec<&[u8]> = actual_line.split(|s| *s == 0x3A).collect(); // ':' character
+                if !line[0..i].contains(&0x3Au8) {
+                    i = 0;
+                    continue; // this line didn't have a colon separator, ignore it
+                }
+                let pieces: Vec<&[u8]> = line[0..i].split(|s| *s == 0x3A).collect(); // ':' character
                 let name = pieces[0];
                 let data = &line[name.len() + 1..i];
                 i = 0;
