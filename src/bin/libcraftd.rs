@@ -5,10 +5,6 @@ use std::io::Write;
 use std::str::from_utf8;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::ptr::null;
-use std::borrow::BorrowMut;
-use std::ops::Deref;
-use std::cell::{Cell, RefCell};
 
 //static mut CLIENTS: Mutex<Vec<Arc<Client>>> = Mutex::new(Vec::new());
 

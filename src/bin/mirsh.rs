@@ -5,17 +5,24 @@ fn main() {
     match args.len() {
         //no args, print help
         1 => {
-            help();
+            print_cmd_list();
             std::process::exit(0);
         },
         //handle multi-argument commands
         _ => {
-            match &args[0][..] {
-                "help" => {
-                    
-                }
+            match &args[1][..] {
+                "debug" => debug(args);
+                "help" => help(args),
+                "create" => create(args),
+                "start" => start(args),
+                "stop" => stop(args),
+                "force-stop" => force_stop(args),
+                "restart" => restart(args),
                 _ => {
-
+                    println!("{}", &args[0][..]);
+                    println!("The command you entered is not recognized.  \nUse 'mirsh help' for information about valid commands.");
+                    print_cmd_list();
+                    std::process::exit(1);
                 }
             }
         }
@@ -23,12 +30,16 @@ fn main() {
 
 }
 
+fn debug(args: Vec<String>) {
+    
+}
+
 fn print_exit() {
     print!("Invalid arguments.  Try 'mirsh help' for a list of commands.");
     std::process::exit(1);
 }
 
-fn help() {
+fn print_cmd_list() {
     println!("\nUsage:\nmirsh <command> [args...]");
     println!("\n  commands:");
     println!("   create           creates a new server");
@@ -39,6 +50,31 @@ fn help() {
     println!("   clone            duplicate a server to another location");
     println!("   backup           create a backup of a server");
     println!("   edit             open a server's config file for editing");
+    println!("   console          connect to a server's console to issue commands");
 
     println!();
+}
+
+fn help(args: Vec<String>) {
+
+}
+
+fn create(args: Vec<String>) {
+
+}
+
+fn start(args: Vec<String>) {
+
+}
+
+fn stop(args: Vec<String>) {
+
+}
+
+fn force_stop(args: Vec<String>) {
+
+}
+
+fn restart(args: Vec<String>) {
+
 }
