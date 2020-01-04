@@ -1,4 +1,6 @@
 use std::env;
+use std::os::unix::net::UnixStream;
+use std::io::{Write, Read};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -11,7 +13,7 @@ fn main() {
         //handle multi-argument commands
         _ => {
             match &args[1][..] {
-                "debug" => debug(args);
+                "debug" => debug(args),
                 "help" => help(args),
                 "create" => create(args),
                 "start" => start(args),
@@ -31,7 +33,21 @@ fn main() {
 }
 
 fn debug(args: Vec<String>) {
-    
+    let mut stream = UnixStream::connect("../../libcraftd.sock").unwrap();
+    if args.len() <= 2 {
+        std::process::exit(1);
+    }
+    /*for arg in args {
+        stream.write_all(arg.as_bytes());
+    }*/
+    stream.write(args[2].as_bytes());
+    stream.write("\n".as_bytes());
+    println!("Message sent");
+    loop {
+        let mut resp = String::new();
+        stream.read_to_string(&mut resp).unwrap();
+        println!("{}", resp);
+    }
 }
 
 fn print_exit() {
