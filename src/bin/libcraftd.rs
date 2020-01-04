@@ -6,6 +6,8 @@ use std::sync::{Arc, Mutex};
 use libcraft::net::get_packet;
 use std::ops::DerefMut;
 use std::process::Child;
+use yaml_rust::{YamlEmitter,YamlLoader};
+use std::fs::File;
 
 fn main() {
     open_listener();
@@ -42,11 +44,14 @@ impl Client {
             };
             let mut ostream = self.output_stream.lock().unwrap();
             dbg!(&packet);
-            for entry in packet {
-                ostream.write(entry.0.as_bytes());
-                ostream.write(b" yoinks ");
-                ostream.write(entry.1.as_bytes());
-                ostream.write(b"\n");
+            if packet.contains_key("action") {
+                match &packet.get("action").unwrap()[..] {
+                    "start" => {
+                        println!("recieved start.  not doing anything");
+                        let mut b = Server::new(String::from("server.yaml"));
+                    }
+                    _ => {}
+                }
             }
         }
         println!("Client Disconnecting...");
@@ -58,7 +63,12 @@ impl Client {
 
 impl Server {
     fn new(yaml_path: String) -> Server {
-        // TODO actually read the yaml file
+        let mut file = File::open(yaml_path).expect("Unable to open file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Unable to read file");
+
+        let mut conf = YamlLoader::load_from_str(&mut contents);
+        dbg!(conf);
         Server {
             yaml_path: "".parse().unwrap(),
             commit: false,

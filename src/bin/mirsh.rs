@@ -113,7 +113,7 @@ fn send_arg_print_result(args: Vec<String>, action: String) {
     out_pack.insert("name".to_string(), String::from(&args[2]));
 
     let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
-    stream.set_read_timeout(Some(Duration::new(10, 0)));
+    stream.set_read_timeout(Some(Duration::new(60, 0))).unwrap();
 
     send_packet(&mut stream, out_pack);
 

@@ -1,0 +1,4 @@
+name: server
+pwd: ./server
+jarfile: test.jar
+
