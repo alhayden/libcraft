@@ -51,6 +51,7 @@ impl Client {
                 i = 0;
                 let mut os = self.output_stream.lock().unwrap();
                 os.write(name.as_bytes());
+                os.write("\n".as_bytes());
 //                os.write(b" yoinks ");
 //                os.write(data);
             }

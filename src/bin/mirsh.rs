@@ -44,9 +44,9 @@ fn debug(args: Vec<String>) {
     stream.write("\n".as_bytes());
     println!("Message sent");
     loop {
-        let mut resp = String::new();
-        stream.read_to_string(&mut resp).unwrap();
-        println!("{}", resp);
+        let mut buf: [u8; 1] = [0];
+        stream.read(&mut buf).unwrap();
+        std::io::stdout().write(&buf).unwrap();
     }
 }
 
