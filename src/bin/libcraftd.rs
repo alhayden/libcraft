@@ -3,6 +3,8 @@ use std::os::unix::net::{UnixStream, UnixListener};
 use std::io::Read;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
+use libcraft::net::get_packet;
+use std::ops::DerefMut;
 
 //static mut CLIENTS: Mutex<Vec<Arc<Client>>> = Mutex::new(Vec::new());
 
@@ -23,33 +25,19 @@ impl Client {
     }
 
     fn handle_incoming(&self) {
-        let mut line: Vec<u8> = Vec::new();
-//        let mut packet: HashMap<str, str> = HashMap::new();
         loop {
-            let mut buf: [u8; 1] = [0];
-            let n = self.input_stream.lock().unwrap().read(&mut buf).unwrap();
-            if n == 0 {
-                break;
-            }
-            io::stdout().write(&buf).unwrap();
-            line.push(buf[0]);
-            if buf[0] == 0x0A{ // EOL
-                if !line.contains(&0x3Au8) {
-                    dbg!("Ignoring line");
-                    continue; // this line didn't have a colon separator, ignore it
-                }
-                let pieces: Vec<&[u8]> = line.split(|s| *s == 0x3A).collect(); // ':' character
-                let name = match String::from_utf8(Vec::from(pieces[0])) {
-                    Ok(t) => t,
-                    Err(_e) => break // this is bad, we're done TODO handle this better
-                };
-                let data = String::from_utf8(Vec::from(&line[pieces[0].len() + 1..line.len()-1])).unwrap();
-                line = Vec::new();
-                let mut os = self.output_stream.lock().unwrap();
-                os.write(name.as_bytes()).unwrap();
-                os.write(b" yoinks ").unwrap();
-                os.write(data.as_bytes()).unwrap();
-                os.write(b"\n").unwrap();
+            let mut istream = self.input_stream.lock().unwrap();
+            let packet = match get_packet(istream.deref_mut()) {
+                Ok(p) => p,
+                Err(e) => break
+            };
+            let mut ostream = self.output_stream.lock().unwrap();
+            dbg!(&packet);
+            for entry in packet {
+                ostream.write(entry.0.as_bytes());
+                ostream.write(b" yoinks ");
+                ostream.write(entry.1.as_bytes());
+                ostream.write(b"\n");
             }
         }
         dbg!("Client Disconnecting...");
