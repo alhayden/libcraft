@@ -1,7 +1,8 @@
 use std::env;
 use std::os::unix::net::UnixStream;
 use std::io::{Write, Read};
-use libcraft::net::get_packet;
+use libcraft::net::{get_packet, send_packet};
+use std::collections::HashMap;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -85,36 +86,43 @@ fn create(args: Vec<String>) {
 }
 
 fn start(args: Vec<String>) {
-    if args.size() < 3 || args.size() > 4 {
-        println!("Error: Invalid arguments");
-        println!("Usage: mirsh start <server>");
-        std::process::exit(1);
-    }
-
-    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
-    stream.write("Action:start\n".as_bytes()).unwrap();
-    stream.write("Name:".as_bytes()).unwrap();
-    stream.write(args[3].as_bytes()).unwrap();
-
-/*    let packet = match get_packet(stream) {
-        Ok(p) => p,
-        Err(e) => {
-            println!(e);
-            std::process::exit(3);
-        }
-    };
-
-*/
+    send_arg_print_result(args, String::from("start"));
 }
 
 fn stop(args: Vec<String>) {
-
+    send_arg_print_result(args, String::from("stop"));
 }
 
 fn force_stop(args: Vec<String>) {
-
+    send_arg_print_result(args, String::from("force-stop"));
 }
 
 fn restart(args: Vec<String>) {
+    send_arg_print_result(args, String::from("restart"));
+}
 
+fn send_arg_print_result(args: Vec<String>, action: String) {
+    if args.len() < 3 || args.len() > 3 {
+        println!("Error: Invalid arguments");
+        println!("Usage: mirsh {} <server>", action);
+        std::process::exit(1);
+    }
+    let mut out_pack: HashMap<String, String> = HashMap::new();
+    out_pack.insert(String::from("action"), action);
+    out_pack.insert("name".to_string(), String::from(&args[2]));
+
+    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
+
+    send_packet(&mut stream, out_pack);
+
+    let packet = match get_packet(&mut stream) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("{}", e);
+            std::process::exit(3);
+        }
+    };
+    if packet.contains_key("result") {
+        println!("{}", packet.get("result").unwrap());
+    }
 }

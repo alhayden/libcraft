@@ -1,4 +1,4 @@
-use std::io::{Read, Error, ErrorKind};
+use std::io::{Read, Write, Error, ErrorKind};
 use std::collections::HashMap;
 
 pub fn get_packet(istream: &mut dyn Read) -> Result<HashMap<String, String>, Error> {
@@ -41,4 +41,14 @@ fn parse_packet(packet: Vec<u8>) -> HashMap<String, String> {
     }
 
     return map;
+}
+
+pub fn send_packet(stream: &mut dyn Write, packet: HashMap<String, String>) {
+    for entry in packet {
+        stream.write(entry.0.as_bytes()).unwrap();
+        stream.write(b":").unwrap();
+        stream.write(entry.1.as_bytes()).unwrap();
+        stream.write(b"\n").unwrap();
+    }
+    stream.write(b"\n").unwrap();
 }
