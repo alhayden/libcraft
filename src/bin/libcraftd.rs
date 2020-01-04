@@ -2,8 +2,6 @@ use std::{thread, io};
 use std::os::unix::net::{UnixStream, UnixListener};
 use std::io::Read;
 use std::io::Write;
-use std::str::from_utf8;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 //static mut CLIENTS: Mutex<Vec<Arc<Client>>> = Mutex::new(Vec::new());
@@ -26,7 +24,6 @@ impl Client {
 
     fn handle_incoming(&self) {
         let mut line: Vec<u8> = Vec::new();
-        let mut i = 0;
 //        let mut packet: HashMap<str, str> = HashMap::new();
         loop {
             let mut buf: [u8; 1] = [0];
@@ -36,28 +33,29 @@ impl Client {
             }
             io::stdout().write(&buf).unwrap();
             line.push(buf[0]);
-            i += 1;
-            if i >= line.len() - 1 || buf[0] == 0x0A { // EOL
+            if buf[0] == 0x0A{ // EOL
                 if !line.contains(&0x3Au8) {
-                    i = 0;
+                    dbg!("Ignoring line");
                     continue; // this line didn't have a colon separator, ignore it
                 }
                 let pieces: Vec<&[u8]> = line.split(|s| *s == 0x3A).collect(); // ':' character
-                let name = match from_utf8(pieces[0]) {
+                let name = match String::from_utf8(Vec::from(pieces[0])) {
                     Ok(t) => t,
-                    Err(e) => break // this is bad, we're done TODO handle this better
+                    Err(_e) => break // this is bad, we're done TODO handle this better
                 };
-                let data = &line[pieces[0].len() + 1..i];
-                i = 0;
+                let data = String::from_utf8(Vec::from(&line[pieces[0].len() + 1..line.len()-1])).unwrap();
+                line = Vec::new();
                 let mut os = self.output_stream.lock().unwrap();
-                os.write(name.as_bytes());
-                os.write("\n".as_bytes());
-//                os.write(b" yoinks ");
-//                os.write(data);
+                os.write(name.as_bytes()).unwrap();
+                os.write(b" yoinks ").unwrap();
+                os.write(data.as_bytes()).unwrap();
+                os.write(b"\n").unwrap();
             }
         }
-        println!("me done");
-        println!("TODO: actually remove ourselves")
+        dbg!("Client Disconnecting...");
+        let mut clients = self.client_list.lock().unwrap();
+        let pos = clients.iter().position(|arc| (arc.as_ref() as *const Client) == (self as *const Client)).unwrap();
+        clients.remove(pos);
     }
 }
 
