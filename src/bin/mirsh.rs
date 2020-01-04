@@ -3,6 +3,7 @@ use std::os::unix::net::UnixStream;
 use std::io::{Write, Read};
 use libcraft::net::{get_packet, send_packet};
 use std::collections::HashMap;
+use std::time::Duration;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -112,6 +113,7 @@ fn send_arg_print_result(args: Vec<String>, action: String) {
     out_pack.insert("name".to_string(), String::from(&args[2]));
 
     let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
+    stream.set_read_timeout(Some(Duration::new(10, 0)));
 
     send_packet(&mut stream, out_pack);
 
