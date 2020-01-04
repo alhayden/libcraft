@@ -1,15 +1,24 @@
-use std::{thread, io};
+use std::{thread, io, process};
 use std::os::unix::net::{UnixStream, UnixListener};
 use std::io::Read;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use libcraft::net::get_packet;
 use std::ops::DerefMut;
-
-//static mut CLIENTS: Mutex<Vec<Arc<Client>>> = Mutex::new(Vec::new());
+use std::process::Child;
 
 fn main() {
     open_listener();
+}
+
+struct Server {
+    yaml_path: String,
+    commit: bool,
+    name: String,
+    jarfile: String,
+    pwd: String,
+    jvm_args: String,
+    child: Option<Child>
 }
 
 struct Client {
@@ -40,10 +49,39 @@ impl Client {
                 ostream.write(b"\n");
             }
         }
-        dbg!("Client Disconnecting...");
+        println!("Client Disconnecting...");
         let mut clients = self.client_list.lock().unwrap();
         let pos = clients.iter().position(|arc| (arc.as_ref() as *const Client) == (self as *const Client)).unwrap();
         clients.remove(pos);
+    }
+}
+
+impl Server {
+    fn new(yaml_path: String) -> Server {
+        // TODO actually read the yaml file
+        Server {
+            yaml_path: "".parse().unwrap(),
+            commit: false,
+            name: "server".parse().unwrap(),
+            jarfile: "test.jar".parse().unwrap(),
+            pwd: "server".parse().unwrap(),
+            jvm_args: "".parse().unwrap(),
+            child: None
+        }
+    }
+
+    fn start(&mut self)  {
+        let mut proc = process::Command::new("java");
+        for arg in self.jvm_args.split(" ") {
+            proc.arg(arg);
+        }
+        proc.arg("-jar");
+        proc.arg(&self.jarfile);
+        proc.current_dir(&self.pwd);
+        let mut child = proc.spawn().unwrap();
+        let s: String = "aaa".parse().unwrap();
+        println!("{}", s);
+//        self.child = Some();
     }
 }
 
@@ -75,4 +113,5 @@ fn open_listener() {
             }
         }
     }
+    println!("TODO make sure that we murdered all of our children")
 }
