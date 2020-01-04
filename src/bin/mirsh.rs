@@ -1,6 +1,7 @@
 use std::env;
 use std::os::unix::net::UnixStream;
 use std::io::{Write, Read};
+use libcraft::net::get_packet;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -15,6 +16,7 @@ fn main() {
             match &args[1][..] {
                 "debug" => debug(args),
                 "help" => help(args),
+                "list" => list(args),
                 "create" => create(args),
                 "start" => start(args),
                 "stop" => stop(args),
@@ -33,16 +35,18 @@ fn main() {
 }
 
 fn debug(args: Vec<String>) {
-    let mut stream = UnixStream::connect("../../libcraftd.sock").unwrap();
+    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
     if args.len() <= 2 {
         std::process::exit(1);
     }
-    /*for arg in args {
-        stream.write_all(arg.as_bytes());
-    }*/
-    stream.write(args[2].as_bytes());
-    stream.write("\n".as_bytes());
-    println!("Message sent");
+    let mut i = 2;
+    loop {
+        stream.write(args[i].as_bytes()).unwrap();
+        stream.write("\n".as_bytes()).unwrap();
+        i += 1;
+        if i == args.len() { break;}
+    }
+    println!("Message sent, awaiting reply:");
     loop {
         let mut buf: [u8; 1] = [0];
         stream.read(&mut buf).unwrap();
@@ -50,14 +54,11 @@ fn debug(args: Vec<String>) {
     }
 }
 
-fn print_exit() {
-    print!("Invalid arguments.  Try 'mirsh help' for a list of commands.");
-    std::process::exit(1);
-}
 
 fn print_cmd_list() {
     println!("\nUsage:\nmirsh <command> [args...]");
     println!("\n  commands:");
+    println!("   list             lists the defined servers");
     println!("   create           creates a new server");
     println!("   start            starts a server that is not running");
     println!("   stop             issues a stop command to a running server");
@@ -75,12 +76,35 @@ fn help(args: Vec<String>) {
 
 }
 
+fn list(args: Vec<String>) {
+
+}
+
 fn create(args: Vec<String>) {
 
 }
 
 fn start(args: Vec<String>) {
+    if args.size() < 3 || args.size() > 4 {
+        println!("Error: Invalid arguments");
+        println!("Usage: mirsh start <server>");
+        std::process::exit(1);
+    }
 
+    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
+    stream.write("Action:start\n".as_bytes()).unwrap();
+    stream.write("Name:".as_bytes()).unwrap();
+    stream.write(args[3].as_bytes()).unwrap();
+
+/*    let packet = match get_packet(stream) {
+        Ok(p) => p,
+        Err(e) => {
+            println!(e);
+            std::process::exit(3);
+        }
+    };
+
+*/
 }
 
 fn stop(args: Vec<String>) {
