@@ -63,12 +63,12 @@ impl Client {
 
 impl Server {
     fn new(yaml_path: String) -> Server {
-        let mut file = File::open(yaml_path).expect("Unable to open file");
+        let mut file = File::open(&yaml_path).expect("Unable to open file");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Unable to read file");
 
         let mut conf = YamlLoader::load_from_str(&mut contents);
-        dbg!(conf);
+        dbg!(conf).unwrap();
         Server {
             yaml_path: "".parse().unwrap(),
             commit: false,
@@ -124,4 +124,8 @@ fn open_listener() {
         }
     }
     println!("TODO make sure that we murdered all of our children")
+}
+
+fn check_yaml_correct(yaml: HashMap<String, String>) -> boolean {
+
 }
