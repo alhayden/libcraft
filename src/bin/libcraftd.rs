@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use libcraft::net::get_packet;
 use std::ops::DerefMut;
 use std::process::Child;
-use yaml_rust::{YamlEmitter,YamlLoader};
+use yaml_rust::{YamlEmitter,YamlLoader, Yaml};
 use std::fs::File;
 
 fn main() {
@@ -62,20 +62,24 @@ impl Client {
 }
 
 impl Server {
-    fn new(yaml_path: String) -> Server {
-        let mut file = File::open(&yaml_path).expect("Unable to open file");
+    fn new(yaml_path_arg: String) -> Server {
+        let mut file = File::open(&yaml_path_arg).expect("Unable to open file");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Unable to read file");
 
-        let mut conf = YamlLoader::load_from_str(&mut contents);
-        dbg!(conf).unwrap();
+        let mut confs = YamlLoader::load_from_str(&mut contents).unwrap();
+        let mut conf = &confs[0];
+
+//        if ! check_yaml_correct(conf) {} //somehow error out here
+
+        dbg!(conf);
         Server {
-            yaml_path: "".parse().unwrap(),
+            yaml_path: yaml_path_arg,
             commit: false,
-            name: "server".parse().unwrap(),
-            jarfile: "test.jar".parse().unwrap(),
-            pwd: "server".parse().unwrap(),
-            jvm_args: "".parse().unwrap(),
+            name: conf["name"].as_str().unwrap().to_string(),
+            jarfile: conf["jarfile"].as_str().unwrap().to_string(),
+            pwd: conf["pwd"].as_str().unwrap().to_string(),
+            jvm_args: conf["jvm-args"].as_str().unwrap().to_string(),
             child: None
         }
     }
@@ -126,6 +130,9 @@ fn open_listener() {
     println!("TODO make sure that we murdered all of our children")
 }
 
-fn check_yaml_correct(yaml: HashMap<String, String>) -> boolean {
-
+fn check_yaml_correct(yaml: Yaml) -> bool {
+    for s in ["name", "pwd", "jarfile", "jvm-args", "server-args", "properties"].iter() {
+        if ! yaml[*s].is_badvalue() { return false; }
+    }
+    return true;
 }
