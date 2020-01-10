@@ -1,4 +1,4 @@
 name: server
 pwd: ./server
 jarfile: test.jar
-
+jvm-args: 

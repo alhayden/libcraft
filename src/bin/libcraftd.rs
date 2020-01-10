@@ -1,7 +1,6 @@
 use std::{thread, io, process};
 use std::os::unix::net::{UnixStream, UnixListener};
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write, Error, ErrorKind};
 use std::sync::{Arc, Mutex};
 use libcraft::net::get_packet;
 use std::ops::DerefMut;
@@ -48,7 +47,7 @@ impl Client {
                 match &packet.get("action").unwrap()[..] {
                     "start" => {
                         println!("recieved start.  not doing anything");
-                        let mut b = Server::new(String::from("server.yaml"));
+                        let mut b = Server::new(String::from("server.yaml")).unwrap();
                     }
                     _ => {}
                 }
@@ -62,17 +61,27 @@ impl Client {
 }
 
 impl Server {
-    fn new(yaml_path_arg: String) -> Server {
-        let mut file = File::open(&yaml_path_arg).expect("Unable to open file");
+    fn new(yaml_path_arg: String) -> Result<Server, io::Error> {
+        let mut file = match File::open(&yaml_path_arg) {
+            Ok(f) => f,
+            Err(e) => return Err(e),
+        };
         let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("Unable to read file");
+        match file.read_to_string(&mut contents) {
+            Ok(_) => {},
+            Err(e) => return Err(e),
+        };
 
-        let mut confs = YamlLoader::load_from_str(&mut contents).unwrap();
-        let mut conf = &confs[0];
+        let confs = match YamlLoader::load_from_str(&mut contents){
+            Ok(cfg) => cfg,
+            Err(e) => return Err(Error::new(ErrorKind::Other, e)),
+        };
+        let mut conf: &Yaml = &confs[0];
 
-//        if ! check_yaml_correct(conf) {} //somehow error out here
+        if ! check_yaml_correct(conf) {return Err(Error::new(ErrorKind::Other, "Malformed YAML"))} //somehow error out here
 
         dbg!(conf);
+        Ok(
         Server {
             yaml_path: yaml_path_arg,
             commit: false,
@@ -81,7 +90,7 @@ impl Server {
             pwd: conf["pwd"].as_str().unwrap().to_string(),
             jvm_args: conf["jvm-args"].as_str().unwrap().to_string(),
             child: None
-        }
+        })
     }
 
     fn start(&mut self)  {
@@ -130,7 +139,7 @@ fn open_listener() {
     println!("TODO make sure that we murdered all of our children")
 }
 
-fn check_yaml_correct(yaml: Yaml) -> bool {
+fn check_yaml_correct(yaml: &Yaml) -> bool {
     for s in ["name", "pwd", "jarfile", "jvm-args", "server-args", "properties"].iter() {
         if ! yaml[*s].is_badvalue() { return false; }
     }
