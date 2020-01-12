@@ -141,7 +141,7 @@ fn open_listener() {
 
 fn check_yaml_correct(yaml: &Yaml) -> bool {
     for s in ["name", "pwd", "jarfile", "jvm-args", "server-args", "properties"].iter() {
-        if ! yaml[*s].is_badvalue() { return false; }
+        if yaml[*s].is_badvalue() { println!("{}", s);return false; }
     }
     return true;
 }
