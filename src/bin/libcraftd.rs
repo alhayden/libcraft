@@ -7,6 +7,7 @@ use std::ops::DerefMut;
 use std::process::Child;
 use yaml_rust::{YamlEmitter,YamlLoader, Yaml};
 use std::fs::File;
+use std::collections::HashMap;
 
 fn main() {
     open_listener();
@@ -139,9 +140,16 @@ fn open_listener() {
     println!("TODO make sure that we murdered all of our children")
 }
 
+fn load_server(server_list: Arc<Mutex<HashMap<String, Arc<Server>>>>, filename: String) {
+    match Server::new(filename) {
+        Ok(srv) => {server_list.lock().unwrap().put(name, Arc::new(srv));},
+        Err(e) => {println!("{}",e)}
+    }
+}
+
 fn check_yaml_correct(yaml: &Yaml) -> bool {
     for s in ["name", "pwd", "jarfile", "jvm-args", "server-args", "properties"].iter() {
-        if yaml[*s].is_badvalue() { println!("{}", s);return false; }
+        if yaml[*s].is_badvalue() { return false; }
     }
     return true;
 }
