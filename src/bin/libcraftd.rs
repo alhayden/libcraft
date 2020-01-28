@@ -12,9 +12,9 @@ use std::ffi::OsStr;
 use std::collections::HashMap;
 
 fn main() {
-    let server_list: Arc<Mutex<HashMap<String, Arc<Server>>>> = Arc::new(Mutex::new(HashMap::new()));
-    load(server_list.clone());
-    open_listener();
+    let server_map: Arc<Mutex<HashMap<String, Arc<Server>>>> = Arc::new(Mutex::new(HashMap::new()));
+    load(server_map.clone());
+    open_listener(server_map);
 }
 
 struct Server {
@@ -31,12 +31,14 @@ struct Client {
     input_stream: Mutex<UnixStream>,
     output_stream: Mutex<UnixStream>,
     client_list: Arc<Mutex<Vec<Arc<Client>>>>,
+    server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>
 }
 
 impl Client {
-    fn new(stream: UnixStream, client_list: Arc<Mutex<Vec<Arc<Client>>>>) -> Client {
+    fn new(stream: UnixStream, client_list: Arc<Mutex<Vec<Arc<Client>>>>,
+           server_map : Arc<Mutex<HashMap<String, Arc<Server>>>>) -> Client {
         let is = stream.try_clone().unwrap();
-        Client { input_stream: Mutex::new(stream), output_stream: Mutex::new(is), client_list }
+        Client { input_stream: Mutex::new(stream), output_stream: Mutex::new(is), client_list, server_map }
     }
 
     fn handle_incoming(&self) {
@@ -113,7 +115,7 @@ impl Server {
     }
 }
 
-fn open_listener() {
+fn open_listener(server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>) {
     // remove the sock if it exists so that we don't error when opening the server socket
     match std::fs::remove_file("libcraftd.sock") {
         Ok(_) => {}
@@ -128,7 +130,7 @@ fn open_listener() {
         match stream {
             Ok(stream) => {
                 /* connection succeeded */
-                let client = Arc::new(Client::new(stream, client_list.clone()));
+                let client = Arc::new(Client::new(stream, client_list.clone(), server_map.clone()));
                 let client2 = client.clone();
                 client_list.lock().unwrap().push(client);
                 thread::spawn(move || client2.handle_incoming());
@@ -144,22 +146,23 @@ fn open_listener() {
     println!("TODO make sure that we murdered all of our children")
 }
 
-fn load(server_list: Arc<Mutex<HashMap<String, Arc<Server>>>>) {
+fn load(server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>) {
     println!("Attempting to load server yaml files...");
     for entry in read_dir(Path::new(".")).unwrap() {//TODO THIS IS NOT THE FINAL PATH
             let entry = entry.unwrap();
             let path = entry.path();
             if !path.is_dir() && path.extension().unwrap_or(OsStr::new("urbad")) == OsStr::new("yaml") {
-                load_server(server_list.clone(), String::from(path.to_str().unwrap()));
+                load_server(server_map.clone(), String::from(path.to_str().unwrap()));
             }
         }
+    println!("Done!  {} servers loaded", server_map.lock().unwrap().len());
 }
 
-fn load_server(server_list: Arc<Mutex<HashMap<String, Arc<Server>>>>, filename: String) {
+fn load_server(server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>, filename: String) {
     println!("Attempting to load server from {} ...", filename);
     match Server::new(filename) {
         Ok(srv) => {
-            server_list.lock().unwrap().insert(String::from(&(srv.name)), Arc::new(srv));
+            server_map.lock().unwrap().insert(String::from(&(srv.name)), Arc::new(srv));
             println!("Successfully loaded server!");
         },
         Err(e) => {println!("Failed to load server: {}",e)}
