@@ -6,10 +6,14 @@ use libcraft::net::get_packet;
 use std::ops::DerefMut;
 use std::process::Child;
 use yaml_rust::{YamlEmitter,YamlLoader, Yaml};
-use std::fs::File;
+use std::fs::{File,read_dir};
+use std::path::Path;
+use std::ffi::OsStr;
 use std::collections::HashMap;
 
 fn main() {
+    let server_list: Arc<Mutex<HashMap<String, Arc<Server>>>> = Arc::new(Mutex::new(HashMap::new()));
+    load(server_list.clone());
     open_listener();
 }
 
@@ -140,10 +144,25 @@ fn open_listener() {
     println!("TODO make sure that we murdered all of our children")
 }
 
+fn load(server_list: Arc<Mutex<HashMap<String, Arc<Server>>>>) {
+    println!("Attempting to load server yaml files...");
+    for entry in read_dir(Path::new(".")).unwrap() {//TODO THIS IS NOT THE FINAL PATH
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if !path.is_dir() && path.extension().unwrap_or(OsStr::new("urbad")) == OsStr::new("yaml") {
+                load_server(server_list.clone(), String::from(path.to_str().unwrap()));
+            }
+        }
+}
+
 fn load_server(server_list: Arc<Mutex<HashMap<String, Arc<Server>>>>, filename: String) {
+    println!("Attempting to load server from {} ...", filename);
     match Server::new(filename) {
-        Ok(srv) => {server_list.lock().unwrap().put(name, Arc::new(srv));},
-        Err(e) => {println!("{}",e)}
+        Ok(srv) => {
+            server_list.lock().unwrap().insert(String::from(&(srv.name)), Arc::new(srv));
+            println!("Successfully loaded server!");
+        },
+        Err(e) => {println!("Failed to load server: {}",e)}
     }
 }
 
