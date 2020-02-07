@@ -52,10 +52,19 @@ impl Client {
             dbg!(&packet);
             if packet.contains_key("action") {
                 match &packet.get("action").unwrap()[..] {
+                    "list" => {},
+                    "create" => {},
                     "start" => {
                         println!("recieved start.  not doing anything");
                         let mut b = Server::new(String::from("server.yaml")).unwrap();
-                    }
+                    },
+                    "stop" => {},
+                    "force-stop" => {},
+                    "restart" => {},
+                    "clone" => {},
+                    "backup" => {},
+                    "edit" => {},
+                    "console" => {},
                     _ => {}
                 }
             }
