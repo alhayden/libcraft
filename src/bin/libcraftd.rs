@@ -2,7 +2,7 @@ use std::{thread, io, process};
 use std::os::unix::net::{UnixStream, UnixListener};
 use std::io::{Read, Write, Error, ErrorKind};
 use std::sync::{Arc, Mutex};
-use libcraft::net::get_packet;
+use libcraft::net::{get_packet, send_packet};
 use std::ops::DerefMut;
 use std::process::Child;
 use yaml_rust::{YamlEmitter,YamlLoader, Yaml};
@@ -52,7 +52,19 @@ impl Client {
             dbg!(&packet);
             if packet.contains_key("action") {
                 match &packet.get("action").unwrap()[..] {
-                    "list" => {},
+                    "list" => {
+                        let mut output = String::from("Defined Servers:\n\nName\tStatus\tOwner\n");
+                        for (key, server) in self.server_map.lock().unwrap().deref_mut() {
+                            output.push_str(key);
+                            output.push_str("\n");
+                            println!("{}", key);
+                            println!("{}", output);
+
+                        }
+                        let mut out_pack: HashMap<String, String> = HashMap::new();
+                        out_pack.insert(String::from("result"), output);
+                        send_packet(ostream.deref_mut(), out_pack);
+                    },
                     "create" => {},
                     "start" => {
                         println!("recieved start.  not doing anything");

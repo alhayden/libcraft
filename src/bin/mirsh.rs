@@ -79,7 +79,29 @@ fn help(args: Vec<String>) {
 }
 
 fn list(args: Vec<String>) {
+    if args.len() < 2 || args.len() > 2 {
+        println!("Error: Invalid arguments");
+        println!("Usage: mirsh list");
+        std::process::exit(1);
+    }
+    let mut out_pack: HashMap<String, String> = HashMap::new();
+    out_pack.insert(String::from("action"), String::from("list"));
 
+    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
+    stream.set_read_timeout(Some(Duration::new(60, 0))).unwrap();
+
+    send_packet(&mut stream, out_pack);
+
+    let packet = match get_packet(&mut stream) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("{}", e);
+            std::process::exit(3);
+        }
+    };
+    if packet.contains_key("result") {
+        println!("{}", packet.get("result").unwrap());
+    }
 }
 
 fn create(args: Vec<String>) {
