@@ -53,13 +53,12 @@ impl Client {
             if packet.contains_key("action") {
                 match &packet.get("action").unwrap()[..] {
                     "list" => {
-                        let mut output = String::from("Defined Servers:\n\nName\tStatus\tOwner\n");
+                        let mut output = String::from("Defined Servers:\\n\\nName\tStatus\tOwner\\n\\n");
                         for (key, server) in self.server_map.lock().unwrap().deref_mut() {
-                            output.push_str(key);
-                            output.push_str("\n");
-                            println!("{}", key);
-                            println!("{}", output);
-
+                            output.push_str(&(server.name.as_str()));
+                            output.push_str(&server.commit.to_string());
+                            output.push_str(&server.pwd.as_str());
+                            output.push_str("\\n");
                         }
                         let mut out_pack: HashMap<String, String> = HashMap::new();
                         out_pack.insert(String::from("result"), output);
@@ -67,8 +66,11 @@ impl Client {
                     },
                     "create" => {},
                     "start" => {
-                        println!("recieved start.  not doing anything");
-                        let mut b = Server::new(String::from("server.yaml")).unwrap();
+                        let mut servers = self.server_map.lock().unwrap();
+                        if packet.contains_key("name") {
+                            let s = servers.get_mut(&packet.get("name").unwrap()[..]).unwrap();
+                            s.start();
+                        }
                     },
                     "stop" => {},
                     "force-stop" => {},
@@ -121,7 +123,7 @@ impl Server {
         })
     }
 
-    fn start(&mut self)  {
+    fn start(&self)  {
         let mut proc = process::Command::new("java");
         for arg in self.jvm_args.split(" ") {
             proc.arg(arg);

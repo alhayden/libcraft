@@ -1,6 +1,6 @@
 name: server
 pwd: ./server
 jarfile: test.jar
-jvm-args: -Xmx 2G
+jvm-args: -Xmx2G
 server-args: nogui
 properties: gamemode=1

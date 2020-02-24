@@ -100,7 +100,8 @@ fn list(args: Vec<String>) {
         }
     };
     if packet.contains_key("result") {
-        println!("{}", packet.get("result").unwrap());
+        dbg!(&packet);
+        println!("{}", packet.get("result").unwrap().replace("\\n", "\n"));
     }
 }
 
