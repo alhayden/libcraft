@@ -69,7 +69,11 @@ impl Client {
                         let mut servers = self.server_map.lock().unwrap();
                         if packet.contains_key("name") {
                             let s = servers.get_mut(&packet.get("name").unwrap()[..]).unwrap();
-                            s.start();
+                            let output = std::sync::Arc::get_mut(s).unwrap().start();
+
+                            let mut out_pack: HashMap<String, String> = HashMap::new();
+                            out_pack.insert(String::from("result"), output);
+                            send_packet(ostream.deref_mut(), out_pack);
                         }
                     },
                     "stop" => {},
@@ -106,7 +110,7 @@ impl Server {
             Ok(cfg) => cfg,
             Err(e) => return Err(Error::new(ErrorKind::Other, e)),
         };
-        let mut conf: &Yaml = &confs[0];
+        let conf: &Yaml = &confs[0];
 
         if ! check_yaml_correct(conf) {return Err(Error::new(ErrorKind::Other, "Malformed YAML"))} //somehow error out here
 
@@ -123,7 +127,12 @@ impl Server {
         })
     }
 
-    fn start(&self)  {
+    fn start(&mut self)  -> String {
+        dbg!(&self.child);
+        match &self.child {
+            None => return String::from("Could not start process: server is already running"),
+            Some(c) => {},
+        };
         let mut proc = process::Command::new("java");
         for arg in self.jvm_args.split(" ") {
             proc.arg(arg);
@@ -131,10 +140,14 @@ impl Server {
         proc.arg("-jar");
         proc.arg(&self.jarfile);
         proc.current_dir(&self.pwd);
-        let mut child = proc.spawn().unwrap();
+        match proc.spawn() {
+            Ok(childProc) => self.child = Some(childProc),
+            Err(e) => {return String::from("Failed to start process: error in spawn");},
+        };
         let s: String = "aaa".parse().unwrap();
         println!("{}", s);
-//        self.child = Some();
+        dbg!(&self.child);
+        String::from("Successfully started child process...")
     }
 }
 
