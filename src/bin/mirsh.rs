@@ -36,27 +36,6 @@ fn main() {
 
 }
 
-fn debug(args: Vec<String>) {
-    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
-    if args.len() <= 2 {
-        std::process::exit(1);
-    }
-    let mut i = 2;
-    loop {
-        stream.write(args[i].as_bytes()).unwrap();
-        stream.write("\n".as_bytes()).unwrap();
-        i += 1;
-        if i == args.len() { break;}
-    }
-    println!("Message sent, awaiting reply:");
-    loop {
-        let mut buf: [u8; 1] = [0];
-        stream.read(&mut buf).unwrap();
-        std::io::stdout().write(&buf).unwrap();
-    }
-}
-
-
 fn print_cmd_list() {
     println!("\nUsage:\nmirsh <command> [args...]");
     println!("\n  commands:");
@@ -79,30 +58,6 @@ fn help(args: Vec<String>) {
 }
 
 fn list(args: Vec<String>) {
-    if args.len() < 2 || args.len() > 2 {
-        println!("Error: Invalid arguments");
-        println!("Usage: mirsh list");
-        std::process::exit(1);
-    }
-    let mut out_pack: HashMap<String, String> = HashMap::new();
-    out_pack.insert(String::from("action"), String::from("list"));
-
-    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
-    stream.set_read_timeout(Some(Duration::new(60, 0))).unwrap();
-
-    send_packet(&mut stream, out_pack);
-
-    let packet = match get_packet(&mut stream) {
-        Ok(p) => p,
-        Err(e) => {
-            println!("{}", e);
-            std::process::exit(3);
-        }
-    };
-    if packet.contains_key("result") {
-        dbg!(&packet);
-        println!("{}", packet.get("result").unwrap().replace("\\n", "\n"));
-    }
 }
 
 fn create(args: Vec<String>) {
@@ -110,44 +65,16 @@ fn create(args: Vec<String>) {
 }
 
 fn start(args: Vec<String>) {
-    send_arg_print_result(args, String::from("start"));
 }
 
 fn stop(args: Vec<String>) {
-    send_arg_print_result(args, String::from("stop"));
 }
 
 fn force_stop(args: Vec<String>) {
-    send_arg_print_result(args, String::from("force-stop"));
 }
 
 fn restart(args: Vec<String>) {
-    send_arg_print_result(args, String::from("restart"));
 }
 
 fn send_arg_print_result(args: Vec<String>, action: String) {
-    if args.len() < 3 || args.len() > 3 {
-        println!("Error: Invalid arguments");
-        println!("Usage: mirsh {} <server>", action);
-        std::process::exit(1);
-    }
-    let mut out_pack: HashMap<String, String> = HashMap::new();
-    out_pack.insert(String::from("action"), action);
-    out_pack.insert("name".to_string(), String::from(&args[2]));
-
-    let mut stream = UnixStream::connect("libcraftd.sock").unwrap();
-    stream.set_read_timeout(Some(Duration::new(60, 0))).unwrap();
-
-    send_packet(&mut stream, out_pack);
-
-    let packet = match get_packet(&mut stream) {
-        Ok(p) => p,
-        Err(e) => {
-            println!("{}", e);
-            std::process::exit(3);
-        }
-    };
-    if packet.contains_key("result") {
-        println!("{}", packet.get("result").unwrap());
-    }
 }

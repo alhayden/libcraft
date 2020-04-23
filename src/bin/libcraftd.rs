@@ -1,20 +1,48 @@
-use std::{thread, io, process};
-use std::os::unix::net::{UnixStream, UnixListener};
-use std::io::{Read, Write, Error, ErrorKind};
+#![feature(proc_macro_hygiene, decl_macro)]
+
+#[macro_use] extern crate rocket;
+
 use std::sync::{Arc, Mutex};
-use libcraft::net::{get_packet, send_packet};
-use std::ops::DerefMut;
+use std::collections::HashMap;
 use std::process::Child;
-use yaml_rust::{YamlEmitter,YamlLoader, Yaml};
-use std::fs::{File,read_dir};
+use std::{io, process};
+use std::fs::{File, read_dir};
+use yaml_rust::{YamlLoader, Yaml};
+use std::io::{Error, ErrorKind, Read};
 use std::path::Path;
 use std::ffi::OsStr;
-use std::collections::HashMap;
+
+#[get("/")]
+fn index() -> &'static str {
+    "Working minecraft server manager - Implementation is left as an exercise to the reader."
+}
 
 fn main() {
     let server_map: Arc<Mutex<HashMap<String, Arc<Server>>>> = Arc::new(Mutex::new(HashMap::new()));
     load(server_map.clone());
-    open_listener(server_map);
+    rocket::ignite().mount("/", routes![index, list, create]).launch();
+}
+
+#[get("/server")]
+fn list() -> &'static str {
+    "lsit of servers"
+}
+
+#[post("/server/<id>")]
+fn create(id: i32) -> &'static str {
+    "u just made a server congrats"
+}
+
+fn start(args: Vec<String>) {
+}
+
+fn stop(args: Vec<String>) {
+}
+
+fn force_stop(args: Vec<String>) {
+}
+
+fn restart(args: Vec<String>) {
 }
 
 struct Server {
@@ -25,73 +53,6 @@ struct Server {
     pwd: String,
     jvm_args: String,
     child: Option<Child>
-}
-
-struct Client {
-    input_stream: Mutex<UnixStream>,
-    output_stream: Mutex<UnixStream>,
-    client_list: Arc<Mutex<Vec<Arc<Client>>>>,
-    server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>
-}
-
-impl Client {
-    fn new(stream: UnixStream, client_list: Arc<Mutex<Vec<Arc<Client>>>>,
-           server_map : Arc<Mutex<HashMap<String, Arc<Server>>>>) -> Client {
-        let is = stream.try_clone().unwrap();
-        Client { input_stream: Mutex::new(stream), output_stream: Mutex::new(is), client_list, server_map }
-    }
-
-    fn handle_incoming(&self) {
-        loop {
-            let mut istream = self.input_stream.lock().unwrap();
-            let packet = match get_packet(istream.deref_mut()) {
-                Ok(p) => p,
-                Err(e) => break
-            };
-            let mut ostream = self.output_stream.lock().unwrap();
-            dbg!(&packet);
-            if packet.contains_key("action") {
-                match &packet.get("action").unwrap()[..] {
-                    "list" => {
-                        let mut output = String::from("Defined Servers:\\n\\nName\tStatus\tOwner\\n\\n");
-                        for (key, server) in self.server_map.lock().unwrap().deref_mut() {
-                            output.push_str(&(server.name.as_str()));
-                            output.push_str(&server.commit.to_string());
-                            output.push_str(&server.pwd.as_str());
-                            output.push_str("\\n");
-                        }
-                        let mut out_pack: HashMap<String, String> = HashMap::new();
-                        out_pack.insert(String::from("result"), output);
-                        send_packet(ostream.deref_mut(), out_pack);
-                    },
-                    "create" => {},
-                    "start" => {
-                        let mut servers = self.server_map.lock().unwrap();
-                        if packet.contains_key("name") {
-                            let s = servers.get_mut(&packet.get("name").unwrap()[..]).unwrap();
-                            let output = std::sync::Arc::get_mut(s).unwrap().start();
-
-                            let mut out_pack: HashMap<String, String> = HashMap::new();
-                            out_pack.insert(String::from("result"), output);
-                            send_packet(ostream.deref_mut(), out_pack);
-                        }
-                    },
-                    "stop" => {},
-                    "force-stop" => {},
-                    "restart" => {},
-                    "clone" => {},
-                    "backup" => {},
-                    "edit" => {},
-                    "console" => {},
-                    _ => {}
-                }
-            }
-        }
-        println!("Client Disconnecting...");
-        let mut clients = self.client_list.lock().unwrap();
-        let pos = clients.iter().position(|arc| (arc.as_ref() as *const Client) == (self as *const Client)).unwrap();
-        clients.remove(pos);
-    }
 }
 
 impl Server {
@@ -149,37 +110,6 @@ impl Server {
         dbg!(&self.child);
         String::from("Successfully started child process...")
     }
-}
-
-fn open_listener(server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>) {
-    // remove the sock if it exists so that we don't error when opening the server socket
-    match std::fs::remove_file("libcraftd.sock") {
-        Ok(_) => {}
-        Err(_) => {}
-    };
-    let listener = UnixListener::bind("libcraftd.sock").expect("Couldn't open server socket!");
-
-    let client_list: Arc<Mutex<Vec<Arc<Client>>>> = Arc::new(Mutex::new(Vec::new()));
-
-    // accept connections and process them, spawning a new thread for each one
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                /* connection succeeded */
-                let client = Arc::new(Client::new(stream, client_list.clone(), server_map.clone()));
-                let client2 = client.clone();
-                client_list.lock().unwrap().push(client);
-                thread::spawn(move || client2.handle_incoming());
-                println!("connect work");
-            }
-            Err(_) => {
-                /* connection failed */
-                println!("that was not very cash money of the unix socket api");
-                break;
-            }
-        }
-    }
-    println!("TODO make sure that we murdered all of our children")
 }
 
 fn load(server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>) {
