@@ -1,7 +1,3 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
-#[macro_use] extern crate rocket;
-
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::process::Child;
@@ -11,25 +7,41 @@ use yaml_rust::{YamlLoader, Yaml};
 use std::io::{Error, ErrorKind, Read};
 use std::path::Path;
 use std::ffi::OsStr;
+use warp::Filter;
 
-#[get("/")]
-fn index() -> &'static str {
-    "Working minecraft server manager - Implementation is left as an exercise to the reader."
-}
 
-fn main() {
+
+#[tokio::main]
+async fn main() {
+    let not_found = warp::any().map(|| "404.");
+    let server_list = warp::path!("server").map(list);
+    let server_get = warp::path!("server" / i32).map(serialize_server);
+    let server_create = warp::path!("server").map(create);
+    let server_edit = warp::path!("server" / i32).map(|frederick|"edit");
+    let server_delete = warp::path!("server" / i32).map(|bill|"ded");
+
     let server_map: Arc<Mutex<HashMap<String, Arc<Server>>>> = Arc::new(Mutex::new(HashMap::new()));
     load(server_map.clone());
-    rocket::ignite().mount("/", routes![index, list, create]).launch();
+
+    let get_methods = warp::get().and(server_list.or(server_get));
+    let post_methods = warp::post().and(server_create);
+    let put_methods = warp::put().and(server_edit);
+    let delete_methods = warp::delete().and(server_delete);
+    let routes = get_methods.or(post_methods).or(put_methods).or(delete_methods).or(not_found);
+
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
 
-#[get("/server")]
+
 fn list() -> &'static str {
     "lsit of servers"
 }
+fn serialize_server(id: i32) -> &'static str {
+    "here be text"
+}
 
-#[post("/server/<id>")]
-fn create(id: i32) -> &'static str {
+
+fn create() -> &'static str {
     "u just made a server congrats"
 }
 
@@ -47,12 +59,13 @@ fn restart(args: Vec<String>) {
 
 struct Server {
     yaml_path: String,
+    id: String,
     commit: bool,
     name: String,
     jarfile: String,
     pwd: String,
     jvm_args: String,
-    child: Option<Child>
+    process: Option<Child>
 }
 
 impl Server {
@@ -78,19 +91,22 @@ impl Server {
         dbg!(conf);
         Ok(
         Server {
+            //TODO BETTER ERROR HANDLING
             yaml_path: yaml_path_arg,
             commit: false,
+            //TODO VERIFY SAFETY
+            id: conf["id"].as_str().unwrap().to_string(),
             name: conf["name"].as_str().unwrap().to_string(),
             jarfile: conf["jarfile"].as_str().unwrap().to_string(),
             pwd: conf["pwd"].as_str().unwrap().to_string(),
             jvm_args: conf["jvm-args"].as_str().unwrap().to_string(),
-            child: None
+            process: None
         })
     }
 
     fn start(&mut self)  -> String {
-        dbg!(&self.child);
-        match &self.child {
+        dbg!(&self.process);
+        match &self.process {
             None => return String::from("Could not start process: server is already running"),
             Some(c) => {},
         };
@@ -102,12 +118,12 @@ impl Server {
         proc.arg(&self.jarfile);
         proc.current_dir(&self.pwd);
         match proc.spawn() {
-            Ok(childProc) => self.child = Some(childProc),
+            Ok(childProc) => self.process = Some(childProc),
             Err(e) => {return String::from("Failed to start process: error in spawn");},
         };
         let s: String = "aaa".parse().unwrap();
         println!("{}", s);
-        dbg!(&self.child);
+        dbg!(&self.process);
         String::from("Successfully started child process...")
     }
 }

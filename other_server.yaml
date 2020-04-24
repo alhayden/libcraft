@@ -1,4 +1,5 @@
 name: SERVER 2.0
+id: server-2
 pwd: ./server
 jarfile: test.jar
 jvm-args: -Xmx 2G

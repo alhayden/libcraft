@@ -1,4 +1,5 @@
-name: server
+name: server' 🤔 
+id: server
 pwd: ./server
 jarfile: test.jar
 jvm-args: -Xmx2G
