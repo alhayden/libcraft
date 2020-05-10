@@ -17,17 +17,17 @@ async fn main() {
     let server_list = warp::path!("server").map(list);
     let server_get = warp::path!("server" / i32).map(serialize_server);
     let server_create = warp::path!("server").map(create);
-    let server_edit = warp::path!("server" / i32).map(|frederick|"edit");
-    let server_delete = warp::path!("server" / i32).map(|bill|"ded");
+    let server_edit = warp::path!("server" / i32 / "edit").map(|frederick|"edit");
+    let server_delete = warp::path!("server" / i32 / "delete").map(|bill|"ded");
+    let server_start= warp::path!("server" / i32 / "start").map(start);
+    let server_stop = warp::path!("server" / i32 / "stop").map(stop);
 
     let server_map: Arc<Mutex<HashMap<String, Arc<Server>>>> = Arc::new(Mutex::new(HashMap::new()));
     load(server_map.clone());
 
     let get_methods = warp::get().and(server_list.or(server_get));
-    let post_methods = warp::post().and(server_create);
-    let put_methods = warp::put().and(server_edit);
-    let delete_methods = warp::delete().and(server_delete);
-    let routes = get_methods.or(post_methods).or(put_methods).or(delete_methods).or(not_found);
+    let post_methods = warp::post().and(server_create.or(server_edit).or(server_delete).or(server_start).or(server_stop));
+    let routes = get_methods.or(post_methods);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
@@ -40,22 +40,17 @@ fn serialize_server(id: i32) -> &'static str {
     "here be text"
 }
 
-
 fn create() -> &'static str {
     "u just made a server congrats"
 }
 
-fn start(args: Vec<String>) {
+fn start(id: i32) -> &'static str {"go"
+
 }
 
-fn stop(args: Vec<String>) {
+fn stop(id: i32) -> &'static str {"stop"
 }
 
-fn force_stop(args: Vec<String>) {
-}
-
-fn restart(args: Vec<String>) {
-}
 
 struct Server {
     yaml_path: String,
