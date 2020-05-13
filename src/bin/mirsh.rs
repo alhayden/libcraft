@@ -1,9 +1,6 @@
 use std::env;
-use std::os::unix::net::UnixStream;
 use std::io::{Write, Read};
-use libcraft::net::{get_packet, send_packet};
 use std::collections::HashMap;
-use std::time::Duration;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -16,7 +13,7 @@ fn main() {
         //handle multi-argument commands
         _ => {
             match &args[1][..] {
-                "debug" => debug(args),
+//                "debug" => debug(args),
                 "help" => help(args),
                 "list" => list(args),
                 "create" => create(args),
@@ -74,6 +71,8 @@ fn force_stop(args: Vec<String>) {
 }
 
 fn restart(args: Vec<String>) {
+    stop(args.clone());
+    start(args);
 }
 
 fn send_arg_print_result(args: Vec<String>, action: String) {
