@@ -8,13 +8,14 @@ use std::io::{Error, ErrorKind, Read};
 use std::path::Path;
 use std::ffi::OsStr;
 use warp::Filter;
+use serde::{Serialize, Deserialize};
 
 
 #[tokio::main]
 async fn main() {
     let not_found = warp::any().map(|| "404.");
     let server_list = warp::path!("server").map(list);
-    let server_get = warp::path!("server" / String).map(serialize_server);
+    let server_get = warp::path!("server" / String).map(get_server);
     let server_create = warp::path!("server").map(create);
     let server_edit = warp::path!("server" / String / "edit").map(|frederick| "edit");
     let server_delete = warp::path!("server" / String / "delete").map(|bill| "ded");
@@ -36,7 +37,7 @@ fn list() -> &'static str {
     "lsit of servers"
 }
 
-fn serialize_server(id: String) -> String {
+fn get_server(id: String) -> String {
     "here be text, the server id be ".to_owned() + &id
 }
 
@@ -53,14 +54,17 @@ fn stop(id: String) -> &'static str {
 }
 
 
+#[derive(Serialize, Deserialize)]
 struct Server {
-    yaml_path: String,
     id: String,
     commit: bool,
     name: String,
     jarfile: String,
     pwd: String,
     jvm_args: String,
+    #[serde(skip)]
+    yaml_path: String,
+    #[serde(skip)]
     process: Option<Child>,
 }
 
@@ -85,26 +89,35 @@ impl Server {
         if !check_yaml_correct(conf) { return Err(Error::new(ErrorKind::Other, "Malformed YAML")); } //somehow error out here
 
         dbg!(conf);
-        Ok(
-            Server {
-                //TODO BETTER ERROR HANDLING
-                yaml_path: yaml_path_arg,
-                commit: false,
-                //TODO VERIFY SAFETY
-                id: conf["id"].as_str().unwrap().to_string(),
-                name: conf["name"].as_str().unwrap().to_string(),
-                jarfile: conf["jarfile"].as_str().unwrap().to_string(),
-                pwd: conf["pwd"].as_str().unwrap().to_string(),
-                jvm_args: conf["jvm-args"].as_str().unwrap().to_string(),
-                process: None,
-            })
+        let srv = Server {
+            //TODO BETTER ERROR HANDLING
+            yaml_path: yaml_path_arg,
+            commit: false,
+            //TODO VERIFY SAFETY
+            id: conf["id"].as_str().unwrap().to_string(),
+            name: conf["name"].as_str().unwrap().to_string(),
+            jarfile: conf["jarfile"].as_str().unwrap().to_string(),
+            pwd: conf["pwd"].as_str().unwrap().to_string(),
+            jvm_args: conf["jvm-args"].as_str().unwrap().to_string(),
+            process: None,
+        };
+        srv.verify()?;
+        Ok(srv)
+    }
+
+    fn verify(&self) -> Result<(), Error> {
+        // TODO check:
+        // validity of pwd (is it bad?)
+        // id (is it using any bad chars?)
+        // maybe yaml_path?
+        Ok(())
     }
 
     fn start(&mut self) -> String {
         dbg!(&self.process);
         match &self.process {
             None => return String::from("Could not start process: server is already running"),
-            Some(c) => {}
+            Some(_c) => {}
         };
         let mut proc = process::Command::new("java");
         for arg in self.jvm_args.split(" ") {
@@ -114,8 +127,8 @@ impl Server {
         proc.arg(&self.jarfile);
         proc.current_dir(&self.pwd);
         match proc.spawn() {
-            Ok(childProc) => self.process = Some(childProc),
-            Err(e) => { return String::from("Failed to start process: error in spawn"); }
+            Ok(child_process) => self.process = Some(child_process),
+            Err(_e) => { return String::from("Failed to start process: error in spawn"); }
         };
         let s: String = "aaa".parse().unwrap();
         println!("{}", s);
