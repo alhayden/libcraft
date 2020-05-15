@@ -45,8 +45,12 @@ fn list() -> &'static str {
     "list of servers"
 }
 
-fn get_server(id: String) -> &'static str {
-    "t"
+fn get_server(id: String) -> String {
+    let list = GLOBAL_SERVER_MAP.get().expect("Server map unintalized.").lock().expect("Could not lock server list.");
+    match list.get(id.as_str()) {
+        Some(server) => serde_json::to_string(&server).expect("Error serializing server to JSON"),
+        None => "test".to_string()
+    }
 }
 
 fn create() -> &'static str {
