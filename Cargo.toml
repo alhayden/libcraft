@@ -5,6 +5,7 @@ authors = ["Alexander Hayden", "Dylan Jones <dylanjones2011@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+regex = "^1"
 warp = "0.2.2"
 serde = { version = "*", features = ["derive"]}
 serde_yaml = "^0.8"

@@ -8,6 +8,7 @@ use warp::Filter;
 use serde::{Serialize, Deserialize};
 use std::collections::hash_map::RandomState;
 use libcraft::Error;
+use regex::Regex;
 
 
 #[tokio::main]
@@ -37,9 +38,7 @@ fn list() -> &'static str {
     "lsit of servers"
 }
 
-fn get_server(id: String) -> String {
-    "here be text, the server id be ".to_owned() + &id
-}
+fn get_server(id: String) -> &'static str { "t" }
 
 fn create() -> &'static str {
     "u just made a server congrats"
@@ -69,12 +68,27 @@ struct Server {
 }
 
 impl Server {
-    fn verify(&self) -> Result<(), io::Error> {
-        // TODO check:
-        // validity of pwd (is it bad?)
-        // id (is it using any bad chars?)
-        // maybe yaml_path?
-        unimplemented!()
+    fn verify(&self) -> Result<(), Error> {
+        // Verify server path and jarfile existence
+        if !Path::new(self.pwd.as_str()).exists() {
+            return Err(Error::VerificationError("Server directory does not exist."));
+        }
+        if !Path::new(self.pwd.as_str()).join(self.jarfile.as_str()).exists() {
+            return Err(Error::VerificationError("Provided jarfile does not exist."));
+        }
+        // Double-check that yaml_path exists
+        if !Path::new(self.yaml_path.as_str()).exists() {
+            return Err(Error::VerificationError("Backing YAML file does not exist.")); // TODO maybe remove?
+        }
+
+        // Verify that id is only using allowed characters
+        // let m: Vec<&str> = self.id.matches("^[0-9A-Za-z\\-]$").collect();
+        let re = Regex::new("[0-9A-Za-z\\-_]+").unwrap();
+        if !re.is_match(&self.id) {
+            return Err(Error::VerificationError("ID uses invalid characters."));
+        }
+
+        Ok(())
     }
 
     fn start(&mut self) -> String {

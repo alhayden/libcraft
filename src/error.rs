@@ -4,6 +4,7 @@ use std::fmt::Display;
 pub enum Error {
     FileError(std::io::Error),
     YamlError(serde_yaml::Error),
+    VerificationError(&'static str),
 }
 
 impl Display for Error {
