@@ -1,18 +1,17 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::collections::HashMap;
 use std::process::Child;
-use std::{io, process};
+use std::process;
 use std::fs::{File, read_dir};
 use std::path::Path;
 use warp::Filter;
 use serde::{Serialize, Deserialize};
-use std::collections::hash_map::RandomState;
 use libcraft::Error;
 use regex::Regex;
-use std::rc::Rc;
+use once_cell::sync::OnceCell;
 
 // TODO fix this, this is bad and we should do some kinda warp injection thing idk
-static mut server_map: Option<Mutex<Rc<HashMap<String, Server>>>> = None;
+static GLOBAL_SERVER_MAP: OnceCell<Mutex<HashMap<String, Server>>> = OnceCell::new();
 
 #[tokio::main]
 async fn main() {
@@ -20,8 +19,8 @@ async fn main() {
     let server_list = warp::path!("server").map(list);
     let server_get = warp::path!("server" / String).map(get_server);
     let server_create = warp::path!("server").map(create);
-    let server_edit = warp::path!("server" / String / "edit").map(|frederick| "edit");
-    let server_delete = warp::path!("server" / String / "delete").map(|bill| "ded");
+    let server_edit = warp::path!("server" / String / "edit").map(|_| "edit");
+    let server_delete = warp::path!("server" / String / "delete").map(|_| "ded");
     let server_start = warp::path!("server" / String / "start").map(start);
     let server_stop = warp::path!("server" / String / "stop").map(stop);
 
@@ -32,16 +31,18 @@ async fn main() {
 
     let servers_path = "./servers";
     let local_server_map = load_servers(servers_path);
-    unsafe {
-        server_map = Some(Mutex::new(Rc::new(local_server_map)))
-    }
+    let tmp = Mutex::new(local_server_map);
+    match GLOBAL_SERVER_MAP.set(tmp) {
+        Ok(_) => (),
+        Err(_) => panic!("Attempted to set an already-set global variable.  Something is very very wrong.")
+    };
 
     warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }
 
 
 fn list() -> &'static str {
-    "lsit of servers"
+    "list of servers"
 }
 
 fn get_server(id: String) -> &'static str {
@@ -125,7 +126,7 @@ impl Server {
 
 fn load_servers(path: &str) -> HashMap<String, Server> {
     println!("Attempting to load server yaml files...");
-    let mut servers: HashMap<String, Server> = HashMap::new();
+    let mut server_map: HashMap<String, Server> = HashMap::new();
     for entry in read_dir(Path::new(path)).unwrap() { // TODO give a correct error message and crash gracefully when path is not found
         let entry = entry.unwrap();
         let path = entry.path();
@@ -134,15 +135,15 @@ fn load_servers(path: &str) -> HashMap<String, Server> {
             println!("Attempting to load server from {} ...", path.to_str().unwrap());
             match load_server(path.to_str().unwrap()) {
                 Ok(srv) => {
-                    servers.insert(srv.id.clone(), srv);
+                    server_map.insert(srv.id.clone(), srv);
                     ()
                 }
                 Err(e) => eprintln!("Error while loading server from {}: {}", path.to_str().unwrap(), e)
             }
         }
     }
-    println!("Done!  {} servers loaded", servers.len());
-    return servers;
+    println!("Done!  {} servers loaded", server_map.len());
+    return server_map;
 }
 
 fn load_server(filename: &str) -> Result<Server, Error> {
