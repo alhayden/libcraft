@@ -9,7 +9,10 @@ use serde::{Serialize, Deserialize};
 use std::collections::hash_map::RandomState;
 use libcraft::Error;
 use regex::Regex;
+use std::rc::Rc;
 
+// TODO fix this, this is bad and we should do some kinda warp injection thing idk
+static mut server_map: Option<Mutex<Rc<HashMap<String, Server>>>> = None;
 
 #[tokio::main]
 async fn main() {
@@ -28,7 +31,10 @@ async fn main() {
     let routes = get_methods.or(post_methods).or(not_found);
 
     let servers_path = "./servers";
-    let server_map = load_servers(servers_path);
+    let local_server_map = load_servers(servers_path);
+    unsafe {
+        server_map = Some(Mutex::new(Rc::new(local_server_map)))
+    }
 
     warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }
@@ -38,7 +44,9 @@ fn list() -> &'static str {
     "lsit of servers"
 }
 
-fn get_server(id: String) -> &'static str { "t" }
+fn get_server(id: String) -> &'static str {
+    "t"
+}
 
 fn create() -> &'static str {
     "u just made a server congrats"
