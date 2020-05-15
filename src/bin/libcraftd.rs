@@ -3,12 +3,11 @@ use std::collections::HashMap;
 use std::process::Child;
 use std::{io, process};
 use std::fs::{File, read_dir};
-use yaml_rust::{YamlLoader, Yaml};
-use std::io::{Error, ErrorKind, Read};
 use std::path::Path;
-use std::ffi::OsStr;
 use warp::Filter;
 use serde::{Serialize, Deserialize};
+use std::collections::hash_map::RandomState;
+use libcraft::Error;
 
 
 #[tokio::main]
@@ -22,14 +21,15 @@ async fn main() {
     let server_start = warp::path!("server" / String / "start").map(start);
     let server_stop = warp::path!("server" / String / "stop").map(stop);
 
-    let server_map: Arc<Mutex<HashMap<String, Arc<Server>>>> = Arc::new(Mutex::new(HashMap::new()));
-    load(server_map.clone());
 
     let get_methods = warp::get().and(server_list.or(server_get));
     let post_methods = warp::post().and(server_create.or(server_edit).or(server_delete).or(server_start).or(server_stop));
-    let routes = get_methods.or(post_methods);
+    let routes = get_methods.or(post_methods).or(not_found);
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    let servers_path = "./servers";
+    let server_map = load_servers(servers_path);
+
+    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }
 
 
@@ -57,10 +57,10 @@ fn stop(id: String) -> &'static str {
 #[derive(Serialize, Deserialize)]
 struct Server {
     id: String,
-    commit: bool,
     name: String,
     jarfile: String,
     pwd: String,
+    #[serde(default)]
     jvm_args: String,
     #[serde(skip)]
     yaml_path: String,
@@ -69,48 +69,12 @@ struct Server {
 }
 
 impl Server {
-    fn new(yaml_path_arg: String) -> Result<Server, io::Error> {
-        let mut file = match File::open(&yaml_path_arg) {
-            Ok(f) => f,
-            Err(e) => return Err(e),
-        };
-        let mut contents = String::new();
-        match file.read_to_string(&mut contents) {
-            Ok(_) => {}
-            Err(e) => return Err(e),
-        };
-
-        let confs = match YamlLoader::load_from_str(&mut contents) {
-            Ok(cfg) => cfg,
-            Err(e) => return Err(Error::new(ErrorKind::Other, e)),
-        };
-        let conf: &Yaml = &confs[0];
-
-        if !check_yaml_correct(conf) { return Err(Error::new(ErrorKind::Other, "Malformed YAML")); } //somehow error out here
-
-        dbg!(conf);
-        let srv = Server {
-            //TODO BETTER ERROR HANDLING
-            yaml_path: yaml_path_arg,
-            commit: false,
-            //TODO VERIFY SAFETY
-            id: conf["id"].as_str().unwrap().to_string(),
-            name: conf["name"].as_str().unwrap().to_string(),
-            jarfile: conf["jarfile"].as_str().unwrap().to_string(),
-            pwd: conf["pwd"].as_str().unwrap().to_string(),
-            jvm_args: conf["jvm-args"].as_str().unwrap().to_string(),
-            process: None,
-        };
-        srv.verify()?;
-        Ok(srv)
-    }
-
-    fn verify(&self) -> Result<(), Error> {
+    fn verify(&self) -> Result<(), io::Error> {
         // TODO check:
         // validity of pwd (is it bad?)
         // id (is it using any bad chars?)
         // maybe yaml_path?
-        Ok(())
+        unimplemented!()
     }
 
     fn start(&mut self) -> String {
@@ -137,32 +101,32 @@ impl Server {
     }
 }
 
-fn load(server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>) {
+fn load_servers(path: &str) -> HashMap<String, Server> {
     println!("Attempting to load server yaml files...");
-    for entry in read_dir(Path::new(".")).unwrap() {//TODO THIS IS NOT THE FINAL PATH
+    let mut servers: HashMap<String, Server> = HashMap::new();
+    for entry in read_dir(Path::new(path)).unwrap() { // TODO give a correct error message and crash gracefully when path is not found
         let entry = entry.unwrap();
         let path = entry.path();
-        if !path.is_dir() && path.extension().unwrap_or(OsStr::new("urbad")) == OsStr::new("yaml") {
-            load_server(server_map.clone(), String::from(path.to_str().unwrap()));
+        if !path.is_dir() && path.extension().unwrap_or("".as_ref()) == "yaml" {
+            // read file
+            println!("Attempting to load server from {} ...", path.to_str().unwrap());
+            match load_server(path.to_str().unwrap()) {
+                Ok(srv) => {
+                    servers.insert(srv.id.clone(), srv);
+                    ()
+                }
+                Err(e) => eprintln!("Error while loading server from {}: {}", path.to_str().unwrap(), e)
+            }
         }
     }
-    println!("Done!  {} servers loaded", server_map.lock().unwrap().len());
+    println!("Done!  {} servers loaded", servers.len());
+    return servers;
 }
 
-fn load_server(server_map: Arc<Mutex<HashMap<String, Arc<Server>>>>, filename: String) {
-    println!("Attempting to load server from {} ...", filename);
-    match Server::new(filename) {
-        Ok(srv) => {
-            server_map.lock().unwrap().insert(String::from(&(srv.name)), Arc::new(srv));
-            println!("Successfully loaded server!");
-        }
-        Err(e) => { println!("Failed to load server: {}", e) }
-    }
-}
-
-fn check_yaml_correct(yaml: &Yaml) -> bool {
-    for s in ["name", "pwd", "jarfile", "jvm-args", "server-args", "properties"].iter() {
-        if yaml[*s].is_badvalue() { return false; }
-    }
-    return true;
+fn load_server(filename: &str) -> Result<Server, Error> {
+    let file = File::open(filename)?;
+    let mut server: Server = serde_yaml::from_reader(file)?;
+    server.yaml_path = filename.to_string();
+    server.verify()?;
+    return Ok(server);
 }

@@ -105,6 +105,12 @@ dependencies = [
 
 [[package]]
 name = "dtoa"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0dd841b58510c9618291ffa448da2e4e0f699d984d436122372f446dae62263d"
+
+[[package]]
+name = "dtoa"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4358a9e11b9a09cf52383b451b49a169e8d797b68aa02301ff586d70d9661ea3"
@@ -306,7 +312,7 @@ checksum = "28d569972648b2c512421b5f2a405ad6ac9666547189d0c5477a3f200f3e02f9"
 dependencies = [
  "bytes",
  "fnv",
- "itoa",
+ "itoa 0.4.5",
 ]
 
 [[package]]
@@ -339,7 +345,7 @@ dependencies = [
  "http",
  "http-body",
  "httparse",
- "itoa",
+ "itoa 0.4.5",
  "log 0.4.8",
  "net2",
  "pin-project",
@@ -389,6 +395,12 @@ dependencies = [
 
 [[package]]
 name = "itoa"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae3088ea4baeceb0284ee9eea42f591226e6beaecf65373e41b38d95a1b8e7a1"
+
+[[package]]
+name = "itoa"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8b7a7c0c47db5545ed3fef7468ee7bb5b74691498139e4b3f6a20685dc6dd8e"
@@ -419,17 +431,18 @@ checksum = "99e85c08494b21a9054e7fe1374a732aeadaff3980b6990b94bfd3a70f690005"
 name = "libcraft"
 version = "0.0.1"
 dependencies = [
- "serde",
+ "serde 1.0.110",
+ "serde_json 0.8.6",
+ "serde_yaml",
  "tokio",
  "warp",
- "yaml-rust",
 ]
 
 [[package]]
 name = "linked-hash-map"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae91b68aebc4ddb91978b11a1b02ddd8602a05ec19002801c5666000e05e0f83"
+checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "log"
@@ -556,6 +569,24 @@ dependencies = [
  "cfg-if",
  "libc",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.1.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92e5113e9fd4cc14ded8e499429f396a20f98c772a47cc8622a736e1ec843c31"
+dependencies = [
+ "num-traits 0.2.11",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c62be47e61d1842b9170f0fdeec8eba98e60e90e5446449a0545e5152acd7096"
+dependencies = [
+ "autocfg 1.0.0",
 ]
 
 [[package]]
@@ -874,6 +905,12 @@ checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
 
 [[package]]
 name = "serde"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9dad3f759919b92c3068c696c15c3d17238234498bbdcc80f2c469606f948ac8"
+
+[[package]]
+name = "serde"
 version = "1.0.110"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99e7b308464d16b56eba9964e4972a3eee817760ab60d88c3f86e1fecb08204c"
@@ -894,13 +931,25 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67f7d2e9edc3523a9c8ec8cd6ec481b3a27810aafee3e625d311febd3e656b4c"
+dependencies = [
+ "dtoa 0.2.2",
+ "itoa 0.1.1",
+ "num-traits 0.1.43",
+ "serde 0.8.23",
+]
+
+[[package]]
+name = "serde_json"
 version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da07b57ee2623368351e9a0488bb0b261322a15a6e0ae53e243cbdc0f4208da9"
 dependencies = [
- "itoa",
+ "itoa 0.4.5",
  "ryu",
- "serde",
+ "serde 1.0.110",
 ]
 
 [[package]]
@@ -909,10 +958,22 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ec5d77e2d4c73717816afac02670d5c4f534ea95ed430442cad02e7a6e32c97"
 dependencies = [
- "dtoa",
- "itoa",
- "serde",
+ "dtoa 0.4.5",
+ "itoa 0.4.5",
+ "serde 1.0.110",
  "url",
+]
+
+[[package]]
+name = "serde_yaml"
+version = "0.8.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16c7a592a1ec97c9c1c68d75b6e537dcbf60c7618e038e7841e00af1d9ccf0c4"
+dependencies = [
+ "dtoa 0.4.5",
+ "linked-hash-map",
+ "serde 1.0.110",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -1186,8 +1247,8 @@ dependencies = [
  "multipart",
  "pin-project",
  "scoped-tls",
- "serde",
- "serde_json",
+ "serde 1.0.110",
+ "serde_json 1.0.51",
  "serde_urlencoded",
  "tokio",
  "tokio-tungstenite",
