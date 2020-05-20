@@ -5,6 +5,7 @@ pub enum Error {
     FileError(std::io::Error),
     YamlError(serde_yaml::Error),
     VerificationError(&'static str),
+    ServerSpawnError(&'static str),
 }
 
 impl Display for Error {
