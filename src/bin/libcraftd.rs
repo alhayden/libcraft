@@ -1,6 +1,6 @@
 use std::sync::{Mutex, MutexGuard};
 use std::collections::HashMap;
-use std::os::unix::io::FromRawFd;
+use std::os::unix::io::{FromRawFd, AsRawFd};
 use std::process::{Child, Stdio};
 use std::process;
 use std::fs::{File, read_dir};
@@ -12,6 +12,8 @@ use regex::Regex;
 use once_cell::sync::OnceCell;
 use std::io::Read;
 use std::os::raw::c_int;
+use std::sync::Arc;
+use futures::{StreamExt, FutureExt};
 
 static GLOBAL_SERVER_MAP: OnceCell<Mutex<HashMap<String, Server>>> = OnceCell::new();
 
@@ -24,7 +26,7 @@ fn get_server_map() -> MutexGuard<'static, HashMap<String, Server>> {
 
 #[tokio::main]
 async fn main() {
-    let not_found = warp::any().map(|| "404.");
+    let not_found = warp::any().map(|| warp::http::Response::builder().status(404).body("Path not found"));
     let server_list = warp::path!("server").map(list);
     let server_get = warp::path!("server" / String).map(get_server);
     let server_create = warp::path!("server").map(create);
@@ -32,11 +34,11 @@ async fn main() {
     let server_delete = warp::path!("server" / String / "delete").map(|_| "ded");
     let server_start = warp::path!("server" / String / "start").map(start);
     let server_stop = warp::path!("server" / String / "stop").map(stop);
-
+    let ws_console = warp::path!("server" / String / "console").and(warp::ws()).map(console);
 
     let get_methods = warp::get().and(server_list.or(server_get));
     let post_methods = warp::post().and(server_create.or(server_edit).or(server_delete).or(server_start).or(server_stop));
-    let routes = get_methods.or(post_methods).or(not_found);
+    let routes = get_methods.or(post_methods).or(ws_console).or(not_found);
 
     let servers_path = "./servers";
     let local_server_map = load_servers(servers_path);
@@ -48,7 +50,6 @@ async fn main() {
 
     warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }
-
 
 fn list() -> String {
     let map = get_server_map();
@@ -85,11 +86,31 @@ fn stop(id: String) -> String {
     if !map.contains_key(&id) {
         return "Error: Couldn't find specified server.".to_string();
     }
-    let mut srv = map.get_mut(&id).unwrap();
+    let srv = map.get_mut(&id).unwrap();
     match srv.stop() {
         Ok(_) => "Server stopped successfully".to_string(),
         Err(e) => "Error: ".to_owned() + &e.to_string()
     }
+}
+
+fn console(id: String, ws: warp::ws::Ws) -> impl warp::Reply {
+    ws.on_upgrade(|websocket| {
+        let mut map = get_server_map();
+        let srv = map.get_mut(&"server".to_string()).unwrap(); // todo bad
+        let file = match &srv.child_pipe {
+            Some(o) => o,
+            None => panic!()
+        }.as_ref();
+        let copy;
+        unsafe {
+            let fd = file.as_raw_fd();
+            copy = File::from_raw_fd(fd);
+        }
+        let tf = tokio::fs::File::from_std(copy);
+        let (tx, rx) = websocket.split();
+
+        rx.forward(tx).map(|_| {})
+    })
 }
 
 
@@ -102,7 +123,7 @@ struct Server {
     #[serde(default)]
     jvm_args: String,
     #[serde(skip)]
-    child_pipe: Option<File>,
+    child_pipe: Option<Arc<File>>,
     #[serde(skip)]
     yaml_path: String,
     #[serde(skip)]
@@ -185,7 +206,7 @@ impl Server {
             proc.stderr(Stdio::from_raw_fd(fds[1]));
             // println!("File descriptors: {}, {}", fds[0], fds[1]);
             // Also lets cross out fingers that closing the input side of the pipe doesn't somehow invalidate the output side
-            self.child_pipe = Some(File::from_raw_fd(fds[0]));
+            self.child_pipe = Some(Arc::new(File::from_raw_fd(fds[0])));
         }
         match proc.spawn() {
             Ok(child_process) => self.process = Some(child_process),
@@ -203,7 +224,14 @@ impl Server {
         if !self.is_alive() {
             return Err(Error::SubprocessError("Server is not currently running"));
         }
-        unimplemented!();
+        self.process.as_mut().unwrap().kill().expect("Couldn't send signal");
+        if self.is_alive() { // It could just be taking a little bit to die, give it some time
+            std::thread::sleep(std::time::Duration::from_millis(1000)); // TODO may want to make this configurable?
+            if self.is_alive() {
+                return Err(Error::SubprocessError("Child is not responding to kill signal."));
+            }
+        }
+        Ok(())
     }
 }
 
