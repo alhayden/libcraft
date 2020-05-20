@@ -1,11 +1,16 @@
 use std::fmt::Display;
 
 #[derive(Debug)]
+/// Custom Error enum to ease error handling.
 pub enum Error {
+    /// For errors related to file processing
     FileError(std::io::Error),
+    /// For errors related to YAML parsing
     YamlError(serde_yaml::Error),
+    /// For errors related to server verification
     VerificationError(&'static str),
-    ServerSpawnError(&'static str),
+    /// For errors related to the server subprocess error
+    SubprocessError(&'static str),
 }
 
 impl Display for Error {
